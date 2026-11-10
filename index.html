@@ -547,8 +547,8 @@ function abonar(c,a,mmv){const add=(c.mm==='m3'&&mmv>0)?mmv:0,k=calc(c),s=sim(c,
 function salC(c){const paid=sum(c.pagos,'int')+sum(c.pagos,'cap'),k=calc(c);return c.tipo==='merc'?Math.max(0,c.venta-paid)+k.mp:k.tot}
 function waMsg(c,p,hdr){if(U&&U.role==='revisador'&&!p)return BCSC.revMsg(c);const last0=p||c.pagos[c.pagos.length-1];if(last0){const ix=c.pagos.indexOf(last0),cc2=ix>=0?{...c,pagos:c.pagos.slice(0,ix+1)}:c;return (hdr?hdr+'\n':'')+fmtPago(cc2,last0)}const d=cdat(c),k=calc(c),last=p||c.pagos[c.pagos.length-1],mg=c.tipo==='merc';return ['*Bolsillo Chori*',...(hdr?[hdr]:[]),'Cliente: '+c.cliente+' ('+(d.cod||ccod(c)||'-')+')','Código del plan: '+(c.cod||'-'),'Resumen: '+(mg?c.desc+' · valor '+$$(c.venta):'valor base '+$$(c.monto)+' · total del plan '+$$(c.monto+c.interes))+' · '+c.n+' cuota(s) '+c.unit+' de '+$$(c.cuota),...(last?['Pago realizado: '+$$(last.mora+last.int+last.cap)+' ('+fd(last.t,'hora')+')',mg?'Mora: '+$$(last.mora):'Desglose: capital '+$$(last.cap)+' · interés '+$$(last.int)+' · mora '+$$(last.mora)]:['Aún no hay pagos registrados']),...(k.mp>0?['Mora pendiente: '+$$(k.mp)]:[]),'Saldo total pendiente: '+$$(salC(c))].join('\n')}
 function waMsgCli(x,hdr){const L=S.cre.filter(c=>c.cli===x.id&&!calc(c).done),pays=S.cre.filter(c=>c.cli===x.id).flatMap(c=>c.pagos.map(p=>({c,p}))).sort((a,b)=>b.p.t-a.p.t),last=pays[0],tot=L.reduce((s,c)=>s+salC(c),0);return ['*Bolsillo Chori*',...(hdr?[hdr]:[]),'Cliente: '+x.name+' ('+x.cod+')','Resumen:',...(L.length?L.map(c=>'- '+(c.cod||'')+': '+(c.tipo==='merc'?c.desc:'valor base '+$$(c.monto))+', saldo '+$$(salC(c))):['- Sin planes activos']),...(last?['Pago realizado: '+$$(last.p.mora+last.p.int+last.p.cap)+' ('+fd(last.p.t,'hora')+')',last.c.tipo==='merc'?'Mora: '+$$(last.p.mora):'Desglose: capital '+$$(last.p.cap)+' · interés '+$$(last.p.int)+' · mora '+$$(last.p.mora)]:[]),'Saldo total pendiente: '+$$(tot)].join('\n')}
-function ctBtns(n,msg,mini){const ok=!!String(n||'').trim();return '<div class="cbs'+(mini?' mini':'')+'" onclick="event.stopPropagation()"><a class="ll'+(ok?'':' off')+'"'+(ok?' href="tel:'+esc(n)+'"':'')+'>📞 Llamar</a><a class="wa2'+(ok?'':' off')+'"'+(ok?' href="'+wl(n,msg)+'" target="_blank" rel="noopener"':'')+'>💬 WhatsApp</a></div>'}
-function contactBtns(c,p,hdr,mini){return ctBtns(cdat(c).tel||c.tel,waMsg(c,p,hdr),mini)}
+function ctBtns(n,msg,mini,extra){const ok=!!String(n||'').trim();return '<div class="cbs'+(mini?' mini':'')+'" onclick="event.stopPropagation()"><a class="ll'+(ok?'':' off')+'"'+(ok?' href="tel:'+esc(n)+'"':'')+'>📞 Llamar</a><a class="wa2'+(ok?'':' off')+'"'+(ok?' href="'+wl(n,msg)+'" target="_blank" rel="noopener"':'')+'>💬 Texto</a>'+(extra||'')+'</div>'}
+function contactBtns(c,p,hdr,mini){return ctBtns(cdat(c).tel||c.tel,waMsg(c,p,hdr),mini,p?'':'<a class="wa2" data-mimg="'+c.id+'" style="cursor:pointer">🖼️ Imagen</a>')}
 function contactCli(x,mini){return ctBtns(x.tel,waMsgCli(x),mini)}
 function telAlt(c){const d=cdat(c),st='display:inline-block;padding:10px 14px;border-radius:8px;text-decoration:none;font-weight:700;background:var(--ln);color:var(--ink);margin:2px 0';return (d.tels||[]).filter(t=>dgt(t.n)!==dgt(d.tel)).map(t=>'<a style="'+st+'" href="tel:'+esc(t.n)+'">📞 '+(t.est==='antiguo'?'Anterior ':'Otro ')+esc(t.n)+'</a>').join(' ')}
 let LREC='';
@@ -740,6 +740,28 @@ return {myR,refR,scoped,tabs,tabOk,rch,rcv,rtxt,rutasDe,chipBtn,chipDlg,link,chi
 var REFO=false;
 function calv(){return BCSC.calv()}
 function repRutas(){return BCSC.repRutas()}
+
+/* ===== MENSAJES COMO IMAGEN (recordatorios, mora, estado) ===== */
+function msgImg(c){try{const d=estDat(c),k=calc(c),rv=U&&U.role==='revisador',late=k.late>0||d.mp>0,V=dv(c),paid=sum(c.pagos,'int')+sum(c.pagos,'cap'),jn=Math.min(cst(c,paid).full+1,c.n),fe=V[jn-1],hy=dk(Date.now()),mn=dk(Date.now()+864e5),fk=fe?dk(fe):'',cuando=fk===hy?'vence hoy':fk===mn?'vence mañana':'vence '+(fe?fd(fe,'dia'):'');
+ let txt,sig='';if(rv){const m=BCSC.revMsg(c),i=m.indexOf('\nAtt ');txt=i>0?m.slice(0,i):m;sig=i>0?m.slice(i+1).replace('\n📞 ','\nCel: '):''}else txt=BCSC.frase(c,null);
+ const inc=d.mp>0&&!d.done?'Incluye '+m2(d.mp)+' de mora':'';
+ return imgMake((x,W,H)=>{const M=36,L=M+44,R=W-M-44;let y=ihead(x,W,H,M,L,R,late?'Aviso de pago':'Recordatorio','Recordatorio de pago',fd(Date.now(),'dia'),late?'EN MORA':'');
+  itx(x,'CLIENTE',L,y,24,'#5d7068',800);y+=54;itx(x,c.cliente,L,y,46,'#14302a',800,'left',R-L);y+=46;itx(x,(d.mg?'Artículo ':c.ref?'Plan de pago ':'Crédito ')+ccd(c),L,y,30,'#5d7068',600);y+=40;
+  x.fillStyle='#d9e2dc';x.fillRect(L,y,R-L,3);y+=34;
+  if(!d.done){const h=inc?250:210;rrp(x,L,y,R-L,h,28);x.fillStyle=late?'#fff1e6':'#fff6d6';x.fill();x.lineWidth=3;x.strokeStyle=late?'#f2b88a':'#f5c542';x.stroke();
+   itx(x,late?'VALOR PARA PONERSE AL DÍA':'CUOTA A PAGAR',L+34,y+54,26,late?'#c2410c':'#b45309',800);itx(x,m2(d.nx+d.mp),L+34,y+150,96,late?'#c2410c':'#b45309',800,'left',R-L-68);
+   itx(x,late?k.late+' cuota(s) atrasada(s) · cuota '+jn+' de '+c.n:'Cuota '+jn+' de '+c.n+' · '+cuando,L+34,y+192,28,'#5d7068',600,'left',R-L-68);if(inc)itx(x,inc,L+34,y+232,27,'#c2410c',800,'left',R-L-68);y+=h+24;
+   const gw=(R-L-20)/2;[['CANCELAR ANTES',m2(d.cancel+d.mp),'#e8f0ff','#9db8f2','#1d4ed8'],['SALDO TOTAL',m2(d.total+d.mp),'#e6f6ee','#9fd8bd','#0b7a57']].forEach((q,i)=>{const bx=L+i*(gw+20);rrp(x,bx,y,gw,150,24);x.fillStyle=q[2];x.fill();x.lineWidth=3;x.strokeStyle=q[3];x.stroke();itx(x,q[0],bx+24,y+46,24,q[4],800);itx(x,q[1],bx+24,y+110,52,q[4],800,'left',gw-40)});y+=150+30}
+  else{itx(x,'¡Tu plan está cancelado!',L,y+40,44,'#0b7a57',800,'left',R-L);y+=90}
+  const fl=iwrap(x,txt,30,500,R-L-48),bh=fl.length*42+36+(sig?90:0);rrp(x,L,y,R-L,bh,24);x.fillStyle='#f3f8f5';x.fill();x.lineWidth=2;x.strokeStyle='#d5e6dc';x.stroke();let ty=y+52;fl.forEach(t=>{itx(x,t,L+24,ty,30,'#14302a',500,'left');ty+=42});
+  if(sig){sig.split('\n').forEach(t=>{itx(x,t,L+24,ty+14,30,'#0b7a57',800,'left',R-L-48);ty+=40})}y+=bh+34;
+  if(!rv){const hc=BCSC.chips(),h2=hc.c[hc.sel]||hc.c[1];itx(x,'Responda al chip '+hc.sel+' ('+(h2.a==='b'?'WhatsApp Business':'WhatsApp')+'): +'+h2.n,W/2,y,24,'#5d7068',600,'center',R-L);y+=44}
+  itx(x,'Bolsillo Chori',W/2,y,26,'#5d7068',700,'center');return y+M+50},1080)}catch(e){return ''}}
+function msgImgDlg(id){const c=S.cre.find(x=>x.id===id);if(!c)return;const im=msgImg(c);if(!im){toast('No se pudo crear la imagen');return}
+ const nm='mensaje-'+(c.cod||'credito')+'-'+dk(Date.now())+'.png',tl=String(cdat(c).tel||c.tel||'').trim();
+ dlg('<b>🖼️ Mensaje como imagen</b><img src="'+im+'" alt="Imagen" style="width:100%;border-radius:12px;border:1px solid var(--ln);margin:8px 0"><div class="row" style="flex-wrap:wrap;gap:6px"><button id="mi1">📤 Compartir imagen</button><button id="mi2" class="sec">⬇ Guardar imagen</button></div><p class="mut">Si el teléfono no abre el menú de compartir, la imagen se guarda: adjúntala en el chat de WhatsApp con el clip.</p>'+(tl?'<div class="cbs"><a class="wa2" href="'+wl(tl,'')+'" target="_blank" rel="noopener">💬 Abrir chat del cliente</a></div>':''),()=>true);
+ const q=s=>document.querySelector(s);q('#mi1').onclick=()=>{imgShare(im,nm,'').then(r=>{if(r==='saved')toast('Imagen guardada. Adjúntala en el chat de WhatsApp.')})};q('#mi2').onclick=()=>savef(nm,dataBlob(im),'Imagen guardada')}
+try{document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('[data-mimg]');if(b){e.stopPropagation();e.preventDefault();msgImgDlg(b.dataset.mimg)}},true)}catch(e){}
 
 /* ===== NUBE (Supabase): sincroniza varios dispositivos ===== */
 var CLOUD_URL='https://ispqxxtvzlheseeodcob.supabase.co',CLOUD_KEY='sb_publishable_I9URt_47AZ1FgVQRryI20Q_GJ18wPsY';
