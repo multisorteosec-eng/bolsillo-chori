@@ -734,7 +734,7 @@ function repRutas(){const R=S.rutas||[];if(!R.length)return '';
 const W=[['detail','cobro'],['cobrov','cobro'],['morav','cobro'],['cartera','own'],['nuevo','own'],['solv','own'],['vehv','own'],['simv','own'],['recv','own'],['movv','own'],['capv','own'],['mercv','own'],['clientes','own'],['liqv','own'],['resumen','own'],['calv','own'],['repv','own']];
 function install(){W.forEach(a=>wrap(a[0],a[1]));
  const d0=window.draw;if(!d0.__w){const d1=function(){if(U&&U.role!=='dueño'){if(!tabOk(tab))tab='cobro';if(sel){const X=scoped('cobro');if(X&&!X.cre.some(c=>c.id===sel))sel=null}}REFO=false;if(U&&U.role==='cobrador'&&sel){const o=myR();const c=S.cre.find(x=>x.id===sel);if(o&&c&&o.indexOf(c.ruta||'')<0)REFO=true}return d0.apply(this,arguments)};d1.__w=1;window.draw=d1}
- const b0=window.bind;if(!b0.__w){const b1=function(){const r=b0.apply(this,arguments);try{if(tab==='cal')calBind();if(U&&U.role==='revisador'){if(tab==='cap'){const kb=document.getElementById('kb');if(kb){const c=kb.closest('.card');if(c)c.remove()}document.querySelectorAll('[data-kx]').forEach(e=>e.remove())}document.querySelectorAll('[data-mx],[data-vx],[data-gx]').forEach(e=>e.remove())}}catch(e){}return r};b1.__w=1;window.bind=b1}}
+ const b0=window.bind;if(!b0.__w){const b1=function(){const r=b0.apply(this,arguments);try{if(U&&U.role==='dueño'&&(tab==='cartera'||tab==='cli'))IMP.btn();if(tab==='cal')calBind();if(U&&U.role==='revisador'){if(tab==='cap'){const kb=document.getElementById('kb');if(kb){const c=kb.closest('.card');if(c)c.remove()}document.querySelectorAll('[data-kx]').forEach(e=>e.remove())}document.querySelectorAll('[data-mx],[data-vx],[data-gx]').forEach(e=>e.remove())}}catch(e){}return r};b1.__w=1;window.bind=b1}}
 try{document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('#chp');if(b)chipDlg()})}catch(e){}
 return {myR,refR,scoped,tabs,tabOk,rch,rcv,rtxt,rutasDe,chipBtn,chipDlg,link,chipFooter,frase,revMsg,calv,repRutas,install,cobScore,cliScore,isInt,chips}})();
 var REFO=false;
@@ -762,6 +762,81 @@ function msgImgDlg(id){const c=S.cre.find(x=>x.id===id);if(!c)return;const im=ms
  dlg('<b>🖼️ Mensaje como imagen</b><img src="'+im+'" alt="Imagen" style="width:100%;border-radius:12px;border:1px solid var(--ln);margin:8px 0"><div class="row" style="flex-wrap:wrap;gap:6px"><button id="mi1">📤 Compartir imagen</button><button id="mi2" class="sec">⬇ Guardar imagen</button></div><p class="mut">Si el teléfono no abre el menú de compartir, la imagen se guarda: adjúntala en el chat de WhatsApp con el clip.</p>'+(tl?'<div class="cbs"><a class="wa2" href="'+wl(tl,'')+'" target="_blank" rel="noopener">💬 Abrir chat del cliente</a></div>':''),()=>true);
  const q=s=>document.querySelector(s);q('#mi1').onclick=()=>{imgShare(im,nm,'').then(r=>{if(r==='saved')toast('Imagen guardada. Adjúntala en el chat de WhatsApp.')})};q('#mi2').onclick=()=>savef(nm,dataBlob(im),'Imagen guardada')}
 try{document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('[data-mimg]');if(b){e.stopPropagation();e.preventDefault();msgImgDlg(b.dataset.mimg)}},true)}catch(e){}
+
+/* ===== IMPORTAR CRÉDITOS DESDE EXCEL / CSV ===== */
+var IMP=(function(){
+const u8=b=>new TextDecoder('utf-8').decode(b);
+const nz=s=>String(s==null?'':s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,' ').trim();
+async function xlsxRows(buf){
+ const u=new Uint8Array(buf),dv=new DataView(buf);let e=u.length-22;while(e>=0&&dv.getUint32(e,true)!==0x06054b50)e--;if(e<0)throw new Error('zip');
+ const n=dv.getUint16(e+10,true);let p=dv.getUint32(e+16,true);const ent={};
+ for(let i=0;i<n;i++){if(dv.getUint32(p,true)!==0x02014b50)break;const m=dv.getUint16(p+10,true),cs=dv.getUint32(p+20,true),nl=dv.getUint16(p+28,true),xl=dv.getUint16(p+30,true),cl=dv.getUint16(p+32,true),lo=dv.getUint32(p+42,true),nm=u8(u.slice(p+46,p+46+nl));ent[nm]={m,cs,lo};p+=46+nl+xl+cl}
+ async function rd(nm){const q=ent[nm];if(!q)return null;const lp=q.lo,nl=dv.getUint16(lp+26,true),xl=dv.getUint16(lp+28,true),st=lp+30+nl+xl,d=u.slice(st,st+q.cs);if(q.m===0)return u8(d);const ds=new DecompressionStream('deflate-raw'),w=ds.writable.getWriter();w.write(d);w.close();return u8(new Uint8Array(await new Response(ds.readable).arrayBuffer()))}
+ const X=t=>new DOMParser().parseFromString(t,'application/xml');
+ const ssx=await rd('xl/sharedStrings.xml'),SS=[];if(ssx)X(ssx).querySelectorAll('si').forEach(si=>{SS.push([...si.querySelectorAll('t')].map(t=>t.textContent).join(''))});
+ const stx=await rd('xl/styles.xml'),dateXf={};
+ if(stx){const sd=X(stx),fm={};sd.querySelectorAll('numFmts numFmt').forEach(f=>{fm[f.getAttribute('numFmtId')]=f.getAttribute('formatCode')||''});
+  [...sd.querySelectorAll('cellXfs xf')].forEach((xf,i)=>{const id=+xf.getAttribute('numFmtId'),code=(fm[id]||'').replace(/"[^"]*"/g,'').replace(/\[[^\]]*\]/g,'');dateXf[i]=(id>=14&&id<=22)||(id>=45&&id<=47)||(fm[id]&&/[dmy]/i.test(code)&&!/0\.0|#/.test(code))})}
+ let sh=Object.keys(ent).filter(k=>/^xl\/worksheets\/sheet\d+\.xml$/.test(k)).sort((a,b)=>parseInt(a.match(/\d+/))-parseInt(b.match(/\d+/)));
+ try{const wb=await rd('xl/workbook.xml'),rl=await rd('xl/_rels/workbook.xml.rels');if(wb&&rl){const s1=X(wb).querySelector('sheets sheet'),rid=s1&&(s1.getAttribute('r:id')||s1.getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships','id'));const r=[...X(rl).querySelectorAll('Relationship')].find(x=>x.getAttribute('Id')===rid);if(r){const t='xl/'+String(r.getAttribute('Target')).replace(/^\/?(xl\/)?/,'');if(ent[t])sh=[t]}}}catch(e){}
+ if(!sh.length)throw new Error('sheet');
+ const sx=X(await rd(sh[0])),rows=[];
+ const ci=r=>{const m=/^([A-Z]+)/.exec(r)[1];let n=0;for(const ch of m)n=n*26+ch.charCodeAt(0)-64;return n-1};
+ sx.querySelectorAll('sheetData row').forEach(rw=>{const ri=+rw.getAttribute('r')-1,row=[];rw.querySelectorAll('c').forEach(c=>{const ix=ci(c.getAttribute('r')),t=c.getAttribute('t'),v=c.querySelector('v'),vv=v?v.textContent:'';let val='';
+  if(t==='s')val=SS[+vv]||'';else if(t==='inlineStr')val=[...c.querySelectorAll('t')].map(x=>x.textContent).join('');else if(t==='str'||t==='e')val=vv;else if(t==='b')val=vv==='1'?'Sí':'No';else if(vv!==''){val=+vv;if(dateXf[+c.getAttribute('s')]&&val>20000&&val<80000){const d=new Date(Math.round((val-25569)*864e5));val=new Date(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate())}}
+  row[ix]=val});rows[ri]=row});
+ return [...rows].map(r=>r||[]).filter(r=>r.some(x=>x!==''&&x!=null))}
+function csvRows(txt){txt=txt.replace(/^﻿/,'');const first=txt.split(/\r?\n/)[0]||'',dl=(first.split(';').length>first.split(',').length)?';':(first.split('\t').length>first.split(',').length?'\t':',');const R=[];let row=[],cur='',q=false;
+ for(let i=0;i<txt.length;i++){const ch=txt[i];if(q){if(ch==='"'){if(txt[i+1]==='"'){cur+='"';i++}else q=false}else cur+=ch}else if(ch==='"')q=true;else if(ch===dl){row.push(cur);cur=''}else if(ch==='\n'||ch==='\r'){if(ch==='\r'&&txt[i+1]==='\n')i++;row.push(cur);cur='';R.push(row);row=[]}else cur+=ch}
+ if(cur!==''||row.length){row.push(cur);R.push(row)}return R.filter(r=>r.some(x=>String(x).trim()!==''))}
+function num(v){if(typeof v==='number')return v;if(v instanceof Date||v==null)return null;let s=String(v).replace(/[^\d.,\-]/g,'');if(!/\d/.test(s))return null;const a=s.lastIndexOf('.'),b=s.lastIndexOf(',');if(a>=0&&b>=0){s=a>b?s.replace(/,/g,''):s.replace(/\./g,'').replace(',','.')}else if(b>=0){s=/,\d{1,2}$/.test(s)?s.replace(',','.'):s.replace(/,/g,'')}else if(a>=0&&(s.match(/\./g)||[]).length>1)s=s.replace(/\./g,'');const n=parseFloat(s);return isNaN(n)?null:n}
+function dat(v){if(v instanceof Date)return v.getTime();if(v==null||v==='')return null;if(typeof v==='number'){return v>20000&&v<80000?Math.round((v-25569)*864e5)+new Date().getTimezoneOffset()*6e4:null}const s=String(v).trim();let m=/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/.exec(s);if(m)return new Date(+m[1],+m[2]-1,+m[3]).getTime();m=/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{2,4})/.exec(s);if(m){let y=+m[3];if(y<100)y+=2000;return new Date(y,+m[2]-1,+m[1]).getTime()}return null}
+const str=v=>v instanceof Date?'':String(v==null?'':v).trim();
+const PAT={cliente:/cliente|nombre|deudor|persona|prestatario/,monto:/monto|prestamo|capital|valor.*(cred|prest)|credito|^valor$|desembolso(?!.*fecha)/,abonos:/abono|pagado|pagos|cancelado|recaudo/,saldo:/saldo|debe|pendiente|por pagar/,fecha:/fecha.*(cred|prest|inicio|desemb|otorg)|^fecha$|^inicio$/,fechaAb:/(ult|ultimo).*(abono|pago)|fecha.*(abono|pago)/,tel:/tel|cel|whats|movil/,ruta:/ruta|zona/,cuotas:/cuota|plazo/,interes:/inter/};
+function guess(h){const used={},M={};['cliente','saldo','abonos','interes','cuotas','tel','ruta','fechaAb','fecha','monto'].forEach(k=>{const i=h.findIndex((x,j)=>!used[j]&&PAT[k].test(nz(x)));if(i>=0){M[k]=i;used[i]=1}});return M}
+function hdrIdx(rows){for(let i=0;i<Math.min(rows.length,15);i++){if(rows[i].filter(x=>typeof x==='string'&&x.trim()).length>=2)return i}return 0}
+async function readFile(f){const nm=f.name.toLowerCase();if(/\.xlsx$|\.xlsm$/.test(nm))return xlsxRows(await f.arrayBuffer());if(/\.csv$|\.txt$/.test(nm))return csvRows(await f.text());throw new Error(/\.xls$/.test(nm)?'xls':'tipo')}
+function build(rows,hi,M,o){
+ const out={ok:[],skip:[],warn:[],ncli:0},now=Date.now();S.cli=S.cli||[];let seq=0;
+ const getC=(name,tel,ruta)=>{const k=nz(name);let c=S.cli.find(x=>nz(x.name)===k);if(c){if(tel&&!c.tel)setTel(c,tel);return c}c=newCli(name,tel,ruta,{});out.ncli++;return c};
+ for(let r=hi+1;r<rows.length;r++){const row=rows[r],g=k=>M[k]>=0&&M[k]!=null?row[M[k]]:null,name=str(g('cliente'));
+  if(!name||/^(total|suma|subtotal)/i.test(name)){if(name)out.skip.push([r+1,name,'fila de total']);continue}
+  let mo=num(g('monto')),ab=num(g('abonos')),sa=num(g('saldo')),it=num(g('interes'));
+  if(mo==null&&sa==null){out.skip.push([r+1,name,'sin monto ni saldo']);continue}
+  if(ab==null&&mo!=null&&sa!=null){ab=Math.max(0,mo-sa+(it||0))}
+  if(mo==null)mo=(ab||0)+sa;
+  let tot=mo,ints=it||0;
+  if(sa!=null&&ab!=null){const t2=ab+sa;if(t2>mo+0.009){ints=Math.max(ints,t2-mo)}else if(t2<mo-0.009){out.warn.push([r+1,name,'abonos + saldo no suman el monto; se tomó el saldo']);ab=Math.max(0,mo+ints-sa)}}
+  tot=mo+ints;if(sa==null)sa=Math.max(0,tot-(ab||0));if(ab==null)ab=Math.max(0,tot-sa);ab=Math.min(ab,tot);
+  if(!(mo>0)){out.skip.push([r+1,name,'monto en cero']);continue}
+  let ruta=o.ruta||'';const rn0=str(g('ruta'));if(rn0){const f=(S.rutas||[]).find(x=>nz(x.name)===nz(rn0));if(f)ruta=f.id}
+  const f0=dat(g('fecha')),fa=dat(g('fechaAb')),start=f0||now,tel=str(g('tel')).replace(/[^\d+]/g,''),nc=Math.max(1,Math.round(num(g('cuotas'))||o.n||1));
+  if(S.cre.some(c=>c.imp&&nz(c.cliente)===nz(name)&&Math.abs(c.monto-mo)<0.01&&Math.abs(c.start-start)<864e5)){out.skip.push([r+1,name,'ya estaba importado']);continue}
+  const cl=getC(name,tel,ruta),ip=ints>0?+(ab*ints/tot).toFixed(2):0,cp=+(ab-ip).toFixed(2);
+  const c={tb:'total',cod:nextCr(),ruta,cli:cl.id,refi:'',refiSaldo:0,tipo:'din',items:[],desc:'',ref:'',flat:false,venta:0,nod:false,id:'c'+now+'i'+(seq++),cob:'dueño',cliente:cl.name,tel:cl.tel,monto:+mo.toFixed(2),tasa:+(ints/mo*100).toFixed(4),unit:o.unit,n:nc,dias:nc,interes:+ints.toFixed(2),cuota:(mo+ints)/nc,plan:null,cargo:0,seguro:0,mora:0,mm:'m3',pA:0.4,pB:0.7,gr:2,start,imp:1,pagos:[]};
+  if(ab>0.004)c.pagos.push({t:fa||(f0?Math.min(now,f0+MS[o.unit]):now),mora:0,int:ip,cap:cp,by:'Importado',cid:'dueño'});
+  out.ok.push(c)}
+ return out}
+function commit(out){out.ok.forEach(c=>S.cre.push(c))}
+function pickDlg(){dlg('<b>📥 Importar créditos desde Excel</b><p class="mut">Escoge tu archivo de Excel (.xlsx) o CSV. La primera fila con títulos debe tener columnas como: cliente, monto del crédito, abonos, saldo y fechas. Si tu archivo es .xls antiguo, ábrelo en Excel y guárdalo como .xlsx.</p><input id="imf" type="file" accept=".xlsx,.xlsm,.csv,.txt,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"><p class="mut">Nada se guarda hasta que revises la vista previa y aceptes.</p>',d=>{const f=d.querySelector('#imf').files[0];if(!f){d.querySelector('#de').textContent='Escoge un archivo';return false}
+  readFile(f).then(rows=>{if(rows.length<2)throw new Error('vacio');mapDlg(rows)}).catch(e=>{toast(e.message==='xls'?'Ese es un .xls antiguo: guárdalo como .xlsx y vuelve a intentar':e.message==='vacio'?'El archivo no tiene filas':'No pude leer ese archivo (¿es .xlsx o .csv?)')})})}
+function mapDlg(rows){const hi=hdrIdx(rows),h=rows[hi].map(x=>str(x)||''),M=guess(h),opt=(sel)=>'<option value="">— no viene —</option>'+h.map((x,i)=>x?'<option value="'+i+'" '+(sel===i?'selected':'')+'>'+esc(x)+'</option>':'').join('');
+ const F=(k,l)=>'<label>'+l+'</label><select id="im_'+k+'">'+opt(M[k])+'</select>';
+ const rt=(S.rutas||[]).length?'<label>Ruta para todos los créditos'+((S.rutas||[]).length?' (obligatoria)':'')+'</label><select id="im_ru">'+ropts('')+'</select>':'';
+ dlg('<b>📥 Revisa las columnas</b><p class="mut">'+(rows.length-hi-1)+' filas encontradas. Confirma qué columna es cada dato (ya intenté adivinarlas).</p>'+F('cliente','Cliente *')+F('monto','Monto del crédito')+F('abonos','Abonos (total pagado)')+F('saldo','Saldo pendiente')+F('fecha','Fecha del crédito')+F('fechaAb','Fecha del último abono')+F('tel','Teléfono')+F('ruta','Ruta (si el Excel la trae)')+F('cuotas','Número de cuotas')+F('interes','Interés')+rt+'<label>Cada cuánto se paga</label><select id="im_un"><option value="día">Diario</option><option value="semana">Semanal</option><option value="quincena">Quincenal</option><option value="mes" selected>Mensual</option></select><label>Cuotas totales si el Excel no las trae</label><input id="im_n" type="number" min="1" value="1"><p class="mut">Los abonos se registran como un solo pago con la fecha del último abono (o de hoy). La mora de estos créditos queda en modo manual para que no se cobre mora por el pasado.</p><div id="im_pv"></div>',d=>{
+  const g=k=>{const e=d.querySelector('#im_'+k);return e&&e.value!==''?+e.value:null},M2={};['cliente','monto','abonos','saldo','fecha','fechaAb','tel','ruta','cuotas','interes'].forEach(k=>M2[k]=g(k));
+  if(M2.cliente==null||(M2.monto==null&&M2.saldo==null)){d.querySelector('#de').textContent='Elige al menos la columna de cliente y la de monto o saldo';return false}
+  const ru=d.querySelector('#im_ru')?d.querySelector('#im_ru').value:'';if((S.rutas||[]).length&&!ru&&M2.ruta==null){d.querySelector('#de').textContent='Escoge la ruta';return false}
+  const o={unit:d.querySelector('#im_un').value,n:+d.querySelector('#im_n').value||1,ruta:ru},out=build(rows,hi,M2,o);
+  if(!out.ok.length){d.querySelector('#de').textContent='No hay filas para importar ('+out.skip.length+' omitidas)';return false}
+  commit(out);save();draw();
+  setTimeout(()=>dlg('<b>✅ Importación lista</b><p>Se crearon <b>'+out.ok.length+'</b> créditos y <b>'+out.ncli+'</b> clientes nuevos.</p>'+(out.skip.length?'<p class="mut">Omitidas ('+out.skip.length+'): '+out.skip.slice(0,6).map(x=>'fila '+x[0]+' ('+esc(x[1])+': '+x[2]+')').join('; ')+(out.skip.length>6?'…':'')+'</p>':'')+(out.warn.length?'<p class="mut">Avisos ('+out.warn.length+'): '+out.warn.slice(0,4).map(x=>'fila '+x[0]+' ('+esc(x[1])+')').join('; ')+'</p>':'')+'<p class="mut">Revisa Cartera: abre algunos créditos y compara el saldo con tu Excel.</p>',()=>true),50)});
+ const pv=()=>{const d=document.querySelector('#im_pv');if(!d)return;const g=k=>{const e=document.querySelector('#im_'+k);return e&&e.value!==''?+e.value:null};const M2={};['cliente','monto','abonos','saldo','fecha','fechaAb','tel','ruta','cuotas','interes'].forEach(k=>M2[k]=g(k));
+  const bak={cli:S.cli,cre:S.cre,ncr:S.ncr,rutas:S.rutas,ngen:S.ngen,rn:(S.rutas||[]).map(r=>r.n)};let html='';try{S.cli=(S.cli||[]).slice();S.cre=S.cre.slice();const o={unit:'mes',n:1,ruta:''};const out=build(rows,hi,M2,o);html='<div class="sc"><table><tr><th>Cliente</th><th>Monto</th><th>Abonos</th><th>Saldo</th></tr>'+out.ok.slice(0,5).map(c=>{const p=sum(c.pagos,'int')+sum(c.pagos,'cap');return '<tr><td>'+esc(c.cliente)+'</td><td>'+$$(c.monto)+'</td><td>'+$$(p)+'</td><td>'+$$(c.monto+c.interes-p)+'</td></tr>'}).join('')+'</table></div><p class="mut">Se importarán '+out.ok.length+' créditos'+(out.skip.length?' · '+out.skip.length+' filas se omiten':'')+'.</p>'}catch(e){html='<p class="mut">Elige las columnas para ver la vista previa.</p>'}
+  S.cli=bak.cli;S.cre=bak.cre;S.ncr=bak.ncr;S.ngen=bak.ngen;(S.rutas||[]).forEach((r,i)=>{r.n=bak.rn[i]});d.innerHTML=html};
+ document.querySelectorAll('[id^=im_]').forEach(e=>{if(e.id!=='im_pv')e.onchange=pv});pv()}
+function btn(){const a=document.getElementById('app');if(!a||document.getElementById('imp'))return;const d=document.createElement('div');d.className='card';d.innerHTML='<button id="imp" class="sec" style="width:100%">📥 Importar créditos desde Excel</button>';a.insertBefore(d,a.firstChild);d.querySelector('#imp').onclick=pickDlg}
+return {btn,pickDlg,xlsxRows,csvRows,build,guess,num,dat}})();
 
 /* ===== NUBE (Supabase): sincroniza varios dispositivos ===== */
 var CLOUD_URL='https://ispqxxtvzlheseeodcob.supabase.co',CLOUD_KEY='sb_publishable_I9URt_47AZ1FgVQRryI20Q_GJ18wPsY';
@@ -824,8 +899,8 @@ async function run(force){if(busy||!on())return;if(!navigator.onLine){state='off
 function touch(){if(!on())return;clearTimeout(timer);timer=setTimeout(()=>run(false),2500)}
 function pend(){const cur=items();let n=0;Object.keys(cur).forEach(k=>{if(hs(JSON.stringify(cur[k].data))!==meta.snap[k])n++});Object.keys(meta.snap).forEach(k=>{if(!cur[k])n++});return n}
 function chip(){let t='☁️ Sin nube',c='#6b7a73';if(on()){const p=pend();if(state==='sync'){t='☁️ Sincronizando…';c='#b7791f'}else if(state==='err'||state==='off'){t='☁️ ⚠ Pendiente'+(p?' ('+p+')':'');c='#c0392b'}else{const hm=lastOk?new Date(lastOk).toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit'}):'';t='☁️ ✓ '+hm+(p?' · '+p+' por subir':'');c='#2e7d32'}}else if(url()&&key()){t='☁️ Iniciar sesión';c='#b7791f'}
- return '<button id="cl" class="sec" style="padding:4px 8px;font-size:12px;margin-right:6px;color:'+c+'">'+t+'</button>'}
-function ui(){const b=document.querySelector('#cl');if(b)b.outerHTML=chip();const m=document.querySelector('#cmsg');if(m)m.textContent=errTxt||''}
+ return '<button id="cloudchip" class="sec" style="padding:4px 8px;font-size:12px;margin-right:6px;color:'+c+'">'+t+'</button>'}
+function ui(){const b=document.querySelector('#cloudchip');if(b)b.outerHTML=chip();const m=document.querySelector('#cmsg');if(m)m.textContent=errTxt||''}
 function open(){const owner=typeof U!=='undefined'&&U&&U.role==='dueño';
  if(!on()){dlg('<b>☁️ Conectar a la nube</b><p class="mut">Con la nube, lo que registres en el celular aparece en el computador y en cualquier otro dispositivo donde entres con tu correo y contraseña.</p>'+((url()&&key())?'':'<label>Dirección del proyecto (URL de Supabase)</label><input id="cu" placeholder="https://xxxx.supabase.co" value="'+esc(url())+'"><label>Clave pública (anon / publishable)</label><input id="ck" value="'+esc(key())+'">')+'<label>Correo</label><input id="ce" type="email" autocomplete="username" value="'+esc(cfg.email||'')+'"><label>Contraseña</label><input id="cp" type="password" autocomplete="current-password"><p class="mut">Si ya entras en este dispositivo con datos propios, se unirán con los de la nube sin perder abonos.</p>',d=>{const u=(d.querySelector('#cu')||{}).value,k=(d.querySelector('#ck')||{}).value,e=d.querySelector('#ce').value.trim(),p=d.querySelector('#cp').value;
    if(u)cfg.url=u.trim();if(k)cfg.key=k.trim();if(!url()||!key()||!e||!p){d.querySelector('#de').textContent='Completa todos los datos';return false}
@@ -833,7 +908,7 @@ function open(){const owner=typeof U!=='undefined'&&U&&U.role==='dueño';
  dlg('<b>☁️ Nube</b><p class="mut">Cuenta: '+esc(cfg.email||'')+'<br>'+(lastOk?'Última sincronización: '+new Date(lastOk).toLocaleString('es-EC'):'Aún no sincroniza')+'<br>Cambios por subir: '+pend()+'</p><p id="cmsg" class="bad">'+esc(errTxt)+'</p><div class="row" style="flex-wrap:wrap;gap:6px"><button id="cs1">Sincronizar ahora</button><button id="cs2" class="sec">Cerrar sesión de la nube</button>'+(owner?'<button id="cs3" class="sec">Reemplazar la nube con este dispositivo</button>':'')+'</div>',()=>true);
  const q=s=>document.querySelector(s);q('#cs1').onclick=()=>{run(false)};q('#cs2').onclick=()=>{cfg.ses=null;sv(CK,cfg);state='';ui();q('#dn').click()};
  const c3=q('#cs3');if(c3)c3.onclick=()=>{if(confirm('La nube quedará IGUAL a este dispositivo (lo que no esté aquí se borra de la nube y de los demás dispositivos). ¿Continuar?')){meta.joined=true;run(true);q('#dn').click()}}}
-try{document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('#cl');if(b)open()})}catch(e){}
+try{document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('#cloudchip');if(b)open()})}catch(e){}
 try{document.addEventListener('visibilitychange',()=>{if(!document.hidden){run(false);if(pendRedraw)maybeRedraw()}})}catch(e){}
 try{window.addEventListener('online',()=>run(false))}catch(e){}
 setInterval(()=>{if(!document.hidden){run(false);if(pendRedraw)maybeRedraw()}},30000);
