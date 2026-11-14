@@ -1,6 +1,6 @@
 // Bolsillo Chori - service worker (funciona sin internet)
 // Cada vez que cambies index.html, cambia este numero de version para que los telefonos se actualicen.
-const VERSION = 'bc-e6c15021';
+const VERSION = 'bc-519986ca';
 const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png'];
 const CDN = [
   'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
