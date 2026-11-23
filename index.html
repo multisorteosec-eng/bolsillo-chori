@@ -753,6 +753,15 @@ function msgImg(c){try{const d=estDat(c),k=calc(c),rv=U&&U.role==='revisador',la
  return imgMake((x,W,H)=>{const M=36,L=M+44,R=W-M-44;let y=ihead(x,W,H,M,L,R,late?'Aviso de pago':'Recordatorio','Recordatorio de pago',fd(Date.now(),'dia'),late?'EN MORA':'');
   itx(x,'CLIENTE',L,y,24,'#5d7068',800);y+=54;itx(x,c.cliente,L,y,46,'#14302a',800,'left',R-L);y+=46;itx(x,(d.mg?'Artículo ':c.ref?'Plan de pago ':'Crédito ')+ccd(c),L,y,30,'#5d7068',600);y+=40;
   x.fillStyle='#d9e2dc';x.fillRect(L,y,R-L,3);y+=34;
+  const lp=(c.pagos||[]).length?c.pagos[c.pagos.length-1]:null;
+  if(lp&&Date.now()-lp.t<=3*864e5){const ab=(+lp.int||0)+(+lp.cap||0),tt=ab+(+lp.mora||0),pa=sum(c.pagos,'int')+sum(c.pagos,'cap'),b0=cst(c,pa-ab),a0=cst(c,pa);let ap='';
+   if(a0.full>b0.full){ap=(a0.full-b0.full>1?'Completó las cuotas '+(b0.full+1)+' a '+a0.full:'Completó la cuota '+a0.full);if(a0.full<c.n&&a0.rem>0.005)ap+=' y adelantó '+m2(a0.rem)+' a la cuota '+(a0.full+1)}
+   else if(a0.full<c.n){const cv=cum(c,a0.full+1)-cum(c,a0.full);ap='Abono a la cuota '+(a0.full+1)+': lleva '+m2(a0.rem)+' de '+m2(cv)}
+   if(+lp.mora>0)ap=(ap?ap+' · ':'')+'incluye '+m2(+lp.mora)+' de mora';
+   const h=ap?318:278;rrp(x,L,y,R-L,h,28);x.fillStyle='#e7f6ee';x.fill();x.lineWidth=3;x.strokeStyle='#9fd8bd';x.stroke();
+   itx(x,'PAGO RECIBIDO · '+fd(lp.t,'hora'),L+34,y+52,26,'#0b7a57',800,'left',R-L-68);itx(x,m2(tt),L+34,y+140,86,'#0b7a57',800,'left',R-L-68);
+   const bw=(R-L-68-32)/3;[['Capital',+lp.cap||0],['Interés',+lp.int||0],['Mora',+lp.mora||0]].forEach((q,i)=>{const bx=L+34+i*(bw+16),by=y+166;rrp(x,bx,by,bw,84,16);x.fillStyle='#fff';x.fill();x.lineWidth=2;x.strokeStyle='#cfe7da';x.stroke();itx(x,q[0],bx+16,by+32,22,'#5d7068',600);itx(x,m2(q[1]),bx+16,by+68,32,q[0]==='Mora'&&q[1]>0?'#c2410c':'#14302a',800,'left',bw-24)});
+   if(ap)itx(x,ap,L+34,y+292,26,'#14302a',700,'left',R-L-68);y+=h+24}
   if(!d.done){const h=inc?250:210;rrp(x,L,y,R-L,h,28);x.fillStyle=late?'#fff1e6':'#fff6d6';x.fill();x.lineWidth=3;x.strokeStyle=late?'#f2b88a':'#f5c542';x.stroke();
    itx(x,late?'VALOR PARA PONERSE AL DÍA':'CUOTA A PAGAR',L+34,y+54,26,late?'#c2410c':'#b45309',800);itx(x,m2(d.nx+d.mp),L+34,y+150,96,late?'#c2410c':'#b45309',800,'left',R-L-68);
    itx(x,late?k.late+' cuota(s) atrasada(s) · cuota '+jn+' de '+c.n:'Cuota '+jn+' de '+c.n+' · '+cuando,L+34,y+192,28,'#5d7068',600,'left',R-L-68);if(inc)itx(x,inc,L+34,y+232,27,'#c2410c',800,'left',R-L-68);y+=h+24;
@@ -911,7 +920,7 @@ function art(c){const t=c.tipo==='merc'?artTxt(c):(c.ref||'');return t?' <span c
 const DEN={USD:{b:[100,50,20,10,5,1],m:[1,0.5,0.25,0.1,0.05,0.01]},EUR:{b:[200,100,50,20,10,5],m:[2,1,0.5,0.2,0.1,0.05]},COP:{b:[100000,50000,20000,10000,5000,2000,1000],m:[1000,500,200,100,50]},MXN:{b:[1000,500,200,100,50,20],m:[20,10,5,2,1,0.5]},PEN:{b:[200,100,50,20,10],m:[5,2,1,0.5,0.2,0.1]},CLP:{b:[20000,10000,5000,2000,1000],m:[500,100,50,10]},ARS:{b:[1000,500,200,100,50,20,10],m:[10,5,2,1]},BOB:{b:[200,100,50,20,10],m:[5,2,1,0.5]},BRL:{b:[200,100,50,20,10,5,2],m:[1,0.5,0.25,0.1,0.05]},GTQ:{b:[200,100,50,20,10,5,1],m:[1,0.5,0.25,0.1,0.05]},DOP:{b:[2000,1000,500,200,100,50],m:[25,10,5,1]}};
 function den(){return DEN[(S.mon||{}).code]||DEN.USD}
 const MON=[['USD','Dólar estadounidense','$'],['COP','Peso colombiano','$'],['EUR','Euro','€'],['MXN','Peso mexicano','$'],['PEN','Sol peruano','S/'],['CLP','Peso chileno','$'],['ARS','Peso argentino','$'],['BOB','Boliviano','Bs'],['BRL','Real brasileño','R$'],['GTQ','Quetzal','Q'],['DOP','Peso dominicano','RD$'],['PAB','Balboa panameño','B/.'],['OTRA','Otra moneda (escribo el símbolo)','']];
-const VER='20-nov-2026 · b9';
+const VER='23-nov-2026 · b10';
 function monOpts(sel){return MON.map(m=>'<option value="'+m[0]+'" '+(m[0]===sel?'selected':'')+'>'+esc(m[1])+(m[2]?' ('+esc(m[2])+')':'')+'</option>').join('')}
 function monRead(c,sy,f){const code=c.value,def=(MON.find(m=>m[0]===code)||[])[2]||'',sym=(sy.value||'').trim()||def;return {code,sym:sym||'$',loc:f.value||'es-CO'}}
 function monCard(){if(!U||U.role!=='dueño')return '';const M=S.mon||{code:'USD',sym:'$',loc:'es-CO'};
